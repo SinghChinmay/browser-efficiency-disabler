@@ -9,13 +9,22 @@ $ErrorActionPreference = "Stop"
 $serviceName  = "BrowserEfficiencyDisabler"
 $scriptPath   = Join-Path $PSScriptRoot "disable-browser-efficiency-mode.ps1"
 $nssmDir      = Join-Path $PSScriptRoot "nssm"
-$nssmExe      = Join-Path $nssmDir "nssm.exe"
 $nssmZip      = Join-Path $PSScriptRoot "nssm.zip"
 $nssmVersion  = "2.24"
 $nssmUrl      = "https://nssm.cc/release/nssm-$nssmVersion.zip"
 
-# --- Step 1: Download NSSM if not present ---
-if (-not (Test-Path $nssmExe)) {
+# --- Step 1: Locate (or download) NSSM ---
+# Search for an existing nssm.exe first — avoids re-downloading every run
+$nssmExe = Get-ChildItem -Path $nssmDir -Recurse -Filter "nssm.exe" -ErrorAction SilentlyContinue |
+    Where-Object { $_.Directory.Name -like "*win64*" } |
+    Select-Object -First 1 -ExpandProperty FullName
+
+if (-not $nssmExe) {
+    $nssmExe = Get-ChildItem -Path $nssmDir -Recurse -Filter "nssm.exe" -ErrorAction SilentlyContinue |
+        Select-Object -First 1 -ExpandProperty FullName
+}
+
+if (-not $nssmExe) {
     Write-Host "Downloading NSSM v$nssmVersion..." -ForegroundColor Cyan
     if (Test-Path $nssmZip) { Remove-Item $nssmZip -Force }
     Invoke-WebRequest -Uri $nssmUrl -OutFile $nssmZip -UseBasicParsing
@@ -35,12 +44,13 @@ if (-not (Test-Path $nssmExe)) {
 
     if ($found) {
         $nssmExe = $found.FullName
-        Write-Host "NSSM located at: $nssmExe" -ForegroundColor Green
     } else {
         Write-Error "Could not find nssm.exe after extraction."
         exit 1
     }
 }
+
+Write-Host "NSSM located at: $nssmExe" -ForegroundColor Green
 
 # --- Step 2: Remove existing service if present ---
 $existing = Get-Service -Name $serviceName -ErrorAction SilentlyContinue
@@ -55,7 +65,11 @@ if ($existing) {
 # --- Step 3: Install the service ---
 Write-Host "Installing service '$serviceName'..." -ForegroundColor Cyan
 
-$pwshPath = (Get-Command powershell.exe -ErrorAction Stop).Source
+$pwshPath = if (Get-Command pwsh.exe -ErrorAction SilentlyContinue) {
+    (Get-Command pwsh.exe).Source
+} else {
+    (Get-Command powershell.exe -ErrorAction Stop).Source
+}
 
 & $nssmExe install $serviceName $pwshPath @(
     "-NoProfile",

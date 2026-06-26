@@ -5,6 +5,8 @@
 
 #Requires -RunAsAdministrator
 
+$ErrorActionPreference = "Stop"
+
 $serviceName = "BrowserEfficiencyDisabler"
 $nssmDir     = Join-Path $PSScriptRoot "nssm"
 
@@ -25,7 +27,17 @@ if (-not $nssmExe) {
 
 Write-Host "Stopping service '$serviceName'..." -ForegroundColor Yellow
 & $nssmExe stop $serviceName 2>$null
-Start-Sleep -Seconds 3
+
+# Poll until the service is actually stopped (or timeout after 30 s)
+$timeout = (Get-Date).AddSeconds(30)
+do {
+    Start-Sleep -Milliseconds 500
+    $svc = Get-Service -Name $serviceName -ErrorAction SilentlyContinue
+} while (($null -eq $svc -or $svc.Status -ne "Stopped") -and (Get-Date) -lt $timeout)
+
+if ($svc -and $svc.Status -ne "Stopped") {
+    Write-Warning "Service did not stop within 30 seconds; attempting removal anyway."
+}
 
 Write-Host "Removing service '$serviceName'..." -ForegroundColor Yellow
 & $nssmExe remove $serviceName confirm

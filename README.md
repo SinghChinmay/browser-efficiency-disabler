@@ -45,7 +45,6 @@ A lightweight PowerShell script runs as a **Windows service**, polling every 5 s
 Run **PowerShell as Administrator**:
 
 ```powershell
-cd c:\tools
 .\install-service.ps1
 ```
 
@@ -111,10 +110,10 @@ The default is 5 seconds. Increase it if you want less frequent checks; decrease
 ## Project Structure
 
 ```
-c:\tools\
 ├── disable-browser-efficiency-mode.ps1   # The monitor script (runs standalone or as a service)
 ├── install-service.ps1                   # Downloads NSSM and installs the Windows service
 ├── uninstall-service.ps1                 # Stops and removes the Windows service
+├── README.md                             # This file
 └── AGENTS.md                             # Instructions for AI coding agents
 ```
 
@@ -152,7 +151,7 @@ Get-Content "$env:ProgramData\BrowserEfficiencyDisabler\nssm-stderr.log"
 
 Common causes:
 - **Script execution policy** — NSSM passes `-ExecutionPolicy Bypass`, so this shouldn't be an issue. If it is, run `Set-ExecutionPolicy RemoteSigned`.
-- **Path issues** — The install script was run from a different folder. Always run `install-service.ps1` from `c:\tools`.
+- **Path issues** — The install script was run from a different folder. Always run `install-service.ps1` from the repo directory.
 
 ### Service is running but no logs appear
 
@@ -160,7 +159,7 @@ The service checks browsers every 5 seconds but only logs when it **fixes** a pr
 
 ### The NSSM download fails
 
-The script downloads from `https://nssm.cc`. If that site is unreachable, download NSSM manually from [nssm.cc/download](https://nssm.cc/download), extract the `win64\nssm.exe` to `c:\tools\nssm\`, and re-run the installer.
+The script downloads from `https://nssm.cc`. If that site is unreachable, download NSSM manually from [nssm.cc/download](https://nssm.cc/download), extract the `win64\nssm.exe` to the repo's `nssm\` directory, and re-run the installer.
 
 ---
 
