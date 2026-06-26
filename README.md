@@ -1,54 +1,64 @@
-# 🚫 Browser Efficiency Mode Disabler
+# Disable Windows Efficiency Mode for Chrome, Edge, Brave & Vivaldi
 
-**Prevents Windows 10/11 from throttling your browsers into "Efficiency Mode" (Idle priority).**
+**Stop Windows 10 and Windows 11 from throttling your browser into Idle priority — automatically. Fix slow tabs, stuttering media, and unresponsive web apps caused by Windows Efficiency Mode.**
 
 [![PowerShell](https://img.shields.io/badge/PowerShell-5.1%2B-blue)](https://github.com/PowerShell/PowerShell)
 [![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11-lightgrey)]()
 
 ---
 
-## The Problem
+## Why Windows Efficiency Mode Slows Down Your Browser
 
-Windows 10 and 11 have a feature called **Efficiency Mode** that demotes background processes to Idle CPU priority. The idea is to save battery and free up resources, but browsers are often the biggest victims. Tabs you haven't clicked on in a few minutes? Efficiency Mode. A media player tab playing music in the background? Efficiency Mode. The result is sluggish tab switching, stuttering media, and unresponsive web apps.
+Windows 10 and Windows 11 include a feature called **Efficiency Mode** that demotes background processes to **Idle CPU priority** to conserve battery and free up system resources. While this sounds useful, web browsers are frequently misidentified as "idle" — even when they're actively playing music, hosting video calls, or holding tabs you intend to return to.
 
-This tool fixes that — automatically.
+The result: **sluggish tab switching**, **stuttering audio/video playback**, and **unresponsive web applications**. Efficiency Mode kicks in silently, and there is no built-in toggle to disable it for specific apps like Chrome, Edge, Brave, or Vivaldi.
+
+**This tool fixes that — automatically, in the background, without any user interaction.**
+
+---
 
 ## How It Works
 
-A lightweight PowerShell script runs as a **Windows service**, polling every 5 seconds. When it detects a supported browser process stuck in `Idle` priority, it bumps it back to `Normal`. That's it.
+A lightweight PowerShell script runs as a **Windows background service**, polling every 5 seconds. Whenever it finds a supported browser process trapped in `Idle` priority, it restores it to `Normal` priority — undoing Windows Efficiency Mode in real time.
 
 ```
-┌─────────────┐     poll every 5s     ┌──────────────────┐
-│  Windows     │ ◄────────────────── │  Browser          │
-│  Service     │                      │  Efficiency Mode  │
-│  (NSSM)      │ ──────────────────► │  Disabler         │
-└─────────────┘   bump to Normal      └──────────────────┘
+┌─────────────────┐    poll every 5s    ┌──────────────────────┐
+│  Windows Service │ ◄───────────────── │  Browser Efficiency   │
+│  (NSSM-hosted)  │                     │  Mode Disabler        │
+│                  │ ──────────────────► │  (PowerShell script)  │
+└─────────────────┘  bump to Normal      └──────────────────────┘
 ```
 
 ### Supported Browsers
 
 | Browser | Process Name |
 |---|---|
+| Google Chrome | `chrome` |
+| Microsoft Edge | `msedge` |
 | Brave Browser | `brave` |
 | Brave Beta | `brave-beta` |
 | Brave Nightly | `brave-nightly` |
-| Google Chrome | `chrome` |
-| Microsoft Edge | `msedge` |
 | Vivaldi | `vivaldi` |
+
+> Want to add another Chromium-based browser? See the [FAQ](#faq).
 
 ---
 
-## Quick Start
+## Quick Start: Install the Service
 
-### 1. Install the Service
+### 1. Run the Installer
 
-Run **PowerShell as Administrator**:
+Open **PowerShell as Administrator** and run:
 
 ```powershell
 .\install-service.ps1
 ```
 
-This downloads [NSSM](https://nssm.cc), registers the service, and starts it immediately. The service is set to **auto-start on boot**.
+This automatically:
+- Downloads [NSSM](https://nssm.cc) (the Non-Sucking Service Manager, ~400 KB)
+- Registers a Windows service named `BrowserEfficiencyDisabler`
+- Configures it to **auto-start on boot**
+- Starts it immediately
 
 ### 2. Verify It's Running
 
@@ -56,85 +66,77 @@ This downloads [NSSM](https://nssm.cc), registers the service, and starts it imm
 Get-Service BrowserEfficiencyDisabler
 ```
 
-### 3. Check the Logs
+Expected output: `Status: Running`, `StartType: Automatic`.
+
+### 3. Check Recent Activity
 
 ```powershell
 Get-Content "$env:ProgramData\BrowserEfficiencyDisabler\service.log" -Tail 20
 ```
 
+You should see `FIXED` entries whenever the script bumps a browser process out of Idle priority.
+
 ---
 
-## Uninstalling
+## Uninstall the Service
 
-Run **as Administrator**:
+Run **PowerShell as Administrator**:
 
 ```powershell
 .\uninstall-service.ps1
 ```
 
-This stops and removes the Windows service. Logs are kept at `C:\ProgramData\BrowserEfficiencyDisabler\` — delete the folder manually if you want a clean slate.
+This stops and removes the Windows service. Log files remain at `C:\ProgramData\BrowserEfficiencyDisabler\` — delete that folder manually for a complete cleanup.
 
 ---
 
-## Running Standalone (No Service)
+## Run Without Installing (Standalone Mode)
 
-If you just want to try it without installing a service:
+To test the script without setting up a Windows service:
 
 ```powershell
 .\disable-browser-efficiency-mode.ps1
 ```
 
-Press `Ctrl+C` to stop. With no service, output goes to the PowerShell console.
+Press `Ctrl+C` to stop. Output prints directly to the console instead of a log file.
 
-### Customizing the Polling Interval
+### Adjust the Polling Interval
 
 ```powershell
 .\disable-browser-efficiency-mode.ps1 -IntervalSeconds 10
 ```
 
-The default is 5 seconds. Increase it if you want less frequent checks; decrease it for near-instant fixes (though 1s is the practical minimum).
+The default is **5 seconds**. Increase for lower CPU usage; decrease (minimum ~1s) for faster detection.
 
 ---
 
 ## Requirements
 
-| Requirement | Notes |
+| Requirement | Details |
 |---|---|
-| **Windows 10 or 11** | Only these versions have Efficiency Mode |
-| **PowerShell 5.1** | Built into Windows 10/11 — nothing to install |
-| **Administrator rights** | Required to install/remove the Windows service (not needed for standalone mode) |
-| **Internet connection** | Needed only during `install-service.ps1` to download NSSM (~400 KB) |
+| **Windows 10 or Windows 11** | Efficiency Mode is exclusive to these versions |
+| **PowerShell 5.1 or later** | Built into Windows 10/11 — no extra install needed |
+| **Administrator privileges** | Required only to install/uninstall the service (not for standalone mode) |
+| **Internet connection** | Needed once during install to download NSSM (~400 KB) |
 
 ---
 
-## Project Structure
+## Log Files
 
-```
-├── disable-browser-efficiency-mode.ps1   # The monitor script (runs standalone or as a service)
-├── install-service.ps1                   # Downloads NSSM and installs the Windows service
-├── uninstall-service.ps1                 # Stops and removes the Windows service
-├── README.md                             # This file
-└── AGENTS.md                             # Instructions for AI coding agents
-```
-
----
-
-## Logs
-
-All logs go to `C:\ProgramData\BrowserEfficiencyDisabler\`:
+All logs are written to `C:\ProgramData\BrowserEfficiencyDisabler\`:
 
 | Log File | Content |
 |---|---|
-| `service.log` | When a browser process was fixed (timestamp, browser name, PID, window title) |
-| `nssm-stdout.log` | NSSM wrapper standard output (rotates at 1 MB) |
-| `nssm-stderr.log` | NSSM wrapper error output (rotates at 1 MB) |
+| `service.log` | Timestamped record of every browser process fixed (PID, window title) |
+| `nssm-stdout.log` | NSSM wrapper standard output (auto-rotates at 1 MB) |
+| `nssm-stderr.log` | NSSM wrapper error output (auto-rotates at 1 MB) |
 
-### Example Log Output
+### Sample Log Output
 
 ```
 2026-06-27 14:32:05 [INFO] === SERVICE STARTED ===
 2026-06-27 14:32:05 [INFO] Polling interval: 5s | Browsers: Brave Browser, Brave Beta, ...
-2026-06-27 14:32:45 [INFO] FIXED: Google Chrome (PID: 18432) YouTube - Google Chrome
+2026-06-27 14:32:45 [INFO] FIXED: Google Chrome (PID: 18432) YouTube — Google Chrome
 2026-06-27 14:35:10 [INFO] FIXED: Microsoft Edge (PID: 22156) New Tab
 ```
 
@@ -142,43 +144,68 @@ All logs go to `C:\ProgramData\BrowserEfficiencyDisabler\`:
 
 ## Troubleshooting
 
-### The service installed but won't start
+### Service installed but won't start
 
 Check the NSSM error log:
+
 ```powershell
 Get-Content "$env:ProgramData\BrowserEfficiencyDisabler\nssm-stderr.log"
 ```
 
 Common causes:
-- **Script execution policy** — NSSM passes `-ExecutionPolicy Bypass`, so this shouldn't be an issue. If it is, run `Set-ExecutionPolicy RemoteSigned`.
-- **Path issues** — The install script was run from a different folder. Always run `install-service.ps1` from the repo directory.
+- **PowerShell execution policy** — The installer passes `-ExecutionPolicy Bypass`, so policy restrictions shouldn't apply. If they do, run: `Set-ExecutionPolicy RemoteSigned`.
+- **Wrong working directory** — Always run `install-service.ps1` from the project folder (`c:\tools`).
 
-### Service is running but no logs appear
+### Service is running but no fixes appear in the log
 
-The service checks browsers every 5 seconds but only logs when it **fixes** a process. If no browsers are in Efficiency Mode yet, there's nothing to log. Open a browser, minimize it, and wait a few minutes.
+The script only writes a log entry when it **detects and fixes** a browser in Efficiency Mode. If no browser has been demoted yet, there's nothing to log. Open Chrome or Edge, minimize the window, and wait a few minutes — Windows will eventually apply Efficiency Mode, and you'll see `FIXED` entries appear.
 
-### The NSSM download fails
+### NSSM download fails
 
-The script downloads from `https://nssm.cc`. If that site is unreachable, download NSSM manually from [nssm.cc/download](https://nssm.cc/download), extract the `win64\nssm.exe` to the repo's `nssm\` directory, and re-run the installer.
+The installer fetches NSSM from `https://nssm.cc`. If that site is unreachable, [download NSSM manually](https://nssm.cc/download), extract `win64\nssm.exe` into the project's `nssm\` folder, then re-run the installer.
 
 ---
 
 ## FAQ
 
-**Will this drain my battery?**  
-Negligibly. The script wakes up for a few milliseconds every 5 seconds to call `Get-Process`. It does no disk I/O unless it finds a process to fix.
+### Does this drain battery or use a lot of CPU?
 
-**Can I add my own browser?**  
-Edit the `$browsers` hashtable in `disable-browser-efficiency-mode.ps1`. Add the friendly name and the process name (check Task Manager for the exact `.exe` name without the extension).
+No. The script wakes up for a few milliseconds every 5 seconds to call `Get-Process` — a lightweight, built-in PowerShell cmdlet. It only writes to disk when it finds a process to fix. The overhead is negligible.
 
-**Does this survive Windows updates?**  
-Yes. NSSM registers a proper Windows service. It persists across reboots and updates.
+### Can I add Firefox, Opera, or another browser?
 
-**Why not just change a registry setting?**  
-There is no registry key to disable Efficiency Mode per-application. Microsoft only exposes this through the Task Manager UI, and even that resets after the process restarts. A monitor script is the only reliable workaround.
+Yes. Edit the `$browsers` hashtable in `disable-browser-efficiency-mode.ps1` and add your browser's process name. To find the exact `.exe` name, open Task Manager, right-click the browser process, select **Properties**, and note the name (without `.exe`). Then add a line like:
+
+```powershell
+"Firefox" = "firefox"
+```
+
+### Does this survive Windows Updates and reboots?
+
+Yes. The service is registered through NSSM as a standard Windows service with `StartType: Automatic`. It starts on boot and persists across Windows updates.
+
+### Why not use a registry tweak or Group Policy?
+
+Microsoft does not expose Efficiency Mode control through the Windows Registry or Group Policy. The only built-in toggle is in Task Manager's **Details** tab, and that setting resets as soon as the process restarts. A lightweight background monitor is the only reliable workaround.
+
+### Is this safe to run?
+
+Yes. The script only reads process information and adjusts CPU priority — it does not modify system files, the registry, or browser settings. The source is a single, readable PowerShell script (~60 lines of logic).
+
+---
+
+## Project Structure
+
+```
+├── disable-browser-efficiency-mode.ps1   # Core monitor script (standalone or service payload)
+├── install-service.ps1                   # Downloads NSSM + installs the Windows service
+├── uninstall-service.ps1                 # Stops and removes the Windows service
+├── README.md                             # You are here
+└── AGENTS.md                             # AI coding agent instructions
+```
 
 ---
 
 ## License
 
-This project is provided as-is under the [MIT License](https://opensource.org/licenses/MIT). Do whatever you want with it.
+MIT — see [LICENSE](https://opensource.org/licenses/MIT). Use it, modify it, share it.
